@@ -10,7 +10,7 @@ export const shorthands = undefined;
  */
 export const up = (pgm) => {
   // 1. Membuat Tipe ENUM Kustom
-  pgm.createType('activity_type', ['working', 'not_working', 'Freelance', 'Household', 'Student', 'Retired']);
+  pgm.createType('activity_type', ['working', 'not_working', 'freelance', 'household', 'student', 'retired']);
   pgm.createType('gender_type', ['male', 'female']);
   pgm.createType('program_status', ['active', 'completed', 'maintenance']);
   pgm.createType('tree_status_type', ['healthy', 'sick', 'dead']);

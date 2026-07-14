@@ -5,7 +5,6 @@ import { registerSchema, loginSchema, profileSchema } from './validator.js';
 import InvariantError from '../../exceptions/InvariantError.js';
 import AuthenticationError from '../../exceptions/AuthenticationError.js';
 
-// Fungsi bantu untuk mengubah rentang usia asli ke dalam Skala 1 - 13
 const convertAgeToScale = (age) => {
   if (age >= 18 && age <= 24) return 1;
   if (age >= 25 && age <= 29) return 2;
@@ -23,14 +22,12 @@ const convertAgeToScale = (age) => {
   throw new InvariantError('Usia di bawah batas minimum (18 tahun).');
 };
 
-// Fungsi bantu untuk kalkulasi BMI
 const calculateBMI = (weight, height) => {
   const heightInMeters = height / 100;
   const bmi = weight / (heightInMeters * heightInMeters);
   return parseFloat(bmi.toFixed(1));
 };
 
-// Klasifikasi status medis dan efek risiko diabetes
 const getBMIMedicalStatus = (bmi) => {
   if (bmi < 18.5) {
     return {
@@ -137,14 +134,16 @@ class UserController {
         throw new InvariantError(error.details[0].message);
       }
 
-      const { activities, age, gender, height, weight, family_diseases } = value;
+      // 1. Ekstrak fullname dan username baru dari request payload
+      const { fullname, username, activities, age, gender, height, weight, family_diseases } = value;
 
-      // 1. Konversi data sesuai kebutuhan tabel medis dan database
       const ageScale = convertAgeToScale(age);
       const genderString = gender === 1 ? 'male' : 'female';
 
-      // 2. Simpan atau perbarui profil data fisik ke DB
+      // 2. Simpan atau perbarui profil data fisik serta data user dasar ke DB
       const updatedProfile = await UserRepository.createOrUpdateProfile(userId, {
+        fullname,
+        username,
         activities,
         ageScale,
         genderString,
@@ -155,7 +154,7 @@ class UserController {
       // 3. Simpan relasi penyakit bawaan keluarga
       await UserRepository.replaceFamilyDiseases(userId, family_diseases);
 
-      // 4. Kalkulasi hasil evaluasi instan untuk respon
+      // 4. Kalkulasi hasil evaluasi instan untuk respon klien
       const bmiValue = calculateBMI(weight, height);
       const bmiMedResult = getBMIMedicalStatus(bmiValue);
 
@@ -164,7 +163,8 @@ class UserController {
         message: 'Profil kesehatan berhasil diperbarui.',
         data: {
           profile: {
-            id: updatedProfile.id,
+            fullname: updatedProfile.fullname,
+            username: updatedProfile.username,
             activities: updatedProfile.activities,
             age_scale: updatedProfile.age,
             gender: updatedProfile.gender,
