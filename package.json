@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "migrate": "node-pg-migrate"
+    "migrate:up": "node-pg-migrate up",
+    "migrate:down": "node-pg-migrate down 9999"
   },
   "repository": {
     "type": "git",

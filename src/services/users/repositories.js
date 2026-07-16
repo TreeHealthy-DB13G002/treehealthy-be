@@ -20,77 +20,75 @@ class UserRepository {
     return result.rows[0];
   }
 
-  async findProfileByUserId(userId) {
-    const query = {
-      text: 'SELECT * FROM users_profiles WHERE user_id = $1',
+  async createOrUpdateProfile(userId, { activities, age, genderString, height, weight }) {
+    const checkQuery = {
+      text: 'SELECT id FROM users_profiles WHERE user_id = $1',
       values: [userId],
     };
-    const result = await pool.query(query);
-    return result.rows[0];
+    const checkResult = await pool.query(checkQuery);
+
+    let result;
+    if (checkResult.rows.length > 0) {
+      const updateQuery = {
+        text: `UPDATE users_profiles 
+               SET activities = $2, age = $3, gender = $4, height = $5, weight = $6 
+               WHERE user_id = $1 RETURNING *`,
+        values: [userId, activities, age, genderString, height, weight],
+      };
+      const res = await pool.query(updateQuery);
+      result = res.rows[0];
+    } else {
+      const insertQuery = {
+        text: `INSERT INTO users_profiles (user_id, activities, age, gender, height, weight) 
+               VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        values: [userId, activities, age, genderString, height, weight],
+      };
+      const res = await pool.query(insertQuery);
+      result = res.rows[0];
+    }
+    return result;
   }
 
-  async createOrUpdateProfile(userId, { fullname, username, activities, ageScale, genderString, height, weight }) {
-    const client = await pool.connect();
+  async updateBasicUserInfo(userId, fullname, username) {
     try {
-      await client.query('BEGIN');
-
-      // 1. Perbarui nama lengkap dan username di tabel 'users'
-      const updateUserQuery = {
-        text: `UPDATE users 
-               SET fullname = $1, username = $2, updated_at = NOW() 
-               WHERE id = $3 
-               RETURNING fullname, username`,
+      const query = {
+        text: 'UPDATE users SET fullname = $1, username = $2, updated_at = NOW() WHERE id = $3 RETURNING fullname, username',
         values: [fullname, username, userId],
       };
-      const userResult = await client.query(updateUserQuery);
-
-      // 2. Periksa apakah data di 'users_profiles' sudah ada
-      const checkQuery = {
-        text: 'SELECT id FROM users_profiles WHERE user_id = $1',
-        values: [userId],
-      };
-      const checkResult = await client.query(checkQuery);
-
-      let profileResult;
-      if (checkResult.rows.length > 0) {
-        // Lakukan pembaruan (UPDATE)
-        const updateQuery = {
-          text: `UPDATE users_profiles 
-                 SET activities = $2, age = $3, gender = $4, height = $5, weight = $6 
-                 WHERE user_id = $1 RETURNING *`,
-          values: [userId, activities, ageScale, genderString, height, weight],
-        };
-        const res = await client.query(updateQuery);
-        profileResult = res.rows[0];
-      } else {
-        // Lakukan penambahan (INSERT)
-        const insertQuery = {
-          text: `INSERT INTO users_profiles (user_id, activities, age, gender, height, weight) 
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-          values: [userId, activities, ageScale, genderString, height, weight],
-        };
-        const res = await client.query(insertQuery);
-        profileResult = res.rows[0];
-      }
-
-      await client.query('COMMIT');
-
-      // Kembalikan gabungan informasi data pengguna dan profil fisiknya
-      return {
-        fullname: userResult.rows[0].fullname,
-        username: userResult.rows[0].username,
-        ...profileResult,
-      };
+      const result = await pool.query(query);
+      return result.rows[0];
     } catch (error) {
-      await client.query('ROLLBACK');
-      
-      // Deteksi error duplikasi unique key (Constraint Violation) di PostgreSQL untuk username
       if (error.code === '23505') {
         throw new InvariantError('Username sudah digunakan oleh pengguna lain.');
       }
       throw error;
-    } finally {
-      client.release();
+    }
+  }
+
+  async upsertAssessmentResult(userId, { finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText }) {
+    const checkQuery = {
+      text: 'SELECT id FROM assessment_results WHERE user_id = $1',
+      values: [userId],
+    };
+    const checkResult = await pool.query(checkQuery);
+
+    if (checkResult.rows.length > 0) {
+      const updateQuery = {
+        text: `UPDATE assessment_results 
+               SET final_risk_score = $2, physical_health_score = $3, lifestyle_score = $4, mental_score = $5, ai_explainer_text = $6, created_at = NOW() 
+               WHERE user_id = $1 RETURNING *`,
+        values: [userId, finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText],
+      };
+      const res = await pool.query(updateQuery);
+      return res.rows[0];
+    } else {
+      const insertQuery = {
+        text: `INSERT INTO assessment_results (user_id, final_risk_score, physical_health_score, lifestyle_score, mental_score, ai_explainer_text) 
+               VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        values: [userId, finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText],
+      };
+      const res = await pool.query(insertQuery);
+      return res.rows[0];
     }
   }
 
@@ -98,7 +96,6 @@ class UserRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
       await client.query('DELETE FROM user_family_diseases WHERE user_id = $1', [userId]);
 
       if (diseaseNames.length > 0) {
@@ -116,7 +113,6 @@ class UserRepository {
           await client.query('INSERT INTO user_family_diseases (user_id, disease_id) VALUES ($1, $2)', [userId, diseaseId]);
         }
       }
-
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -135,6 +131,41 @@ class UserRepository {
     };
     const result = await pool.query(query);
     return result.rows.map((row) => row.name);
+  }
+
+  // Mengambil data gabungan lengkap untuk halaman Profile
+  async getCompleteUserProfile(userId) {
+    const userQuery = {
+      text: 'SELECT id, fullname, username FROM users WHERE id = $1',
+      values: [userId],
+    };
+    const userRes = await pool.query(userQuery);
+    const user = userRes.rows[0];
+
+    if (!user) return null;
+
+    const profileQuery = {
+      text: 'SELECT activities, age, gender, height, weight FROM users_profiles WHERE user_id = $1',
+      values: [userId],
+    };
+    const profileRes = await pool.query(profileQuery);
+    const profile = profileRes.rows[0] || null;
+
+    const resultQuery = {
+      text: 'SELECT final_risk_score, physical_health_score, lifestyle_score, mental_score, ai_explainer_text FROM assessment_results WHERE user_id = $1',
+      values: [userId],
+    };
+    const resultRes = await pool.query(resultQuery);
+    const assessmentResult = resultRes.rows[0] || null;
+
+    const familyDiseases = await this.getFamilyDiseases(userId);
+
+    return {
+      user,
+      profile,
+      familyDiseases,
+      assessmentResult,
+    };
   }
 }
 
