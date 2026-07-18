@@ -6,11 +6,11 @@ const swaggerOptions = {
     info: {
       title: 'TreeHealthy API Documentation',
       version: '1.0.0',
-      description: 'Dokumentasi RESTful API berskala enterprise untuk aplikasi kesehatan TreeHealthy.',
+      description: 'Dokumentasi RESTful API Modular untuk aplikasi kesehatan TreeHealthy.',
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+        url: 'http://localhost:3000/api',
         description: 'Server Lokal (Development)',
       },
     ],
@@ -25,7 +25,6 @@ const swaggerOptions = {
       },
     },
   },
-  // Memindai seluruh anotasi JSDoc di setiap file di dalam folder services secara dinamis
   apis: ['./src/services/**/*.js'],
 };
 

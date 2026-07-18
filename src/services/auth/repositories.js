@@ -20,6 +20,15 @@ class UserRepository {
     return result.rows[0];
   }
 
+  async findProfileByUserId(userId) {
+    const query = {
+      text: 'SELECT id FROM users_profiles WHERE user_id = $1',
+      values: [userId],
+    };
+    const result = await pool.query(query);
+    return result.rows[0];
+  }
+
   async createOrUpdateProfile(userId, { activities, age, genderString, height, weight }) {
     const checkQuery = {
       text: 'SELECT id FROM users_profiles WHERE user_id = $1',
@@ -65,33 +74,6 @@ class UserRepository {
     }
   }
 
-  async upsertAssessmentResult(userId, { finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText }) {
-    const checkQuery = {
-      text: 'SELECT id FROM assessment_results WHERE user_id = $1',
-      values: [userId],
-    };
-    const checkResult = await pool.query(checkQuery);
-
-    if (checkResult.rows.length > 0) {
-      const updateQuery = {
-        text: `UPDATE assessment_results 
-               SET final_risk_score = $2, physical_health_score = $3, lifestyle_score = $4, mental_score = $5, ai_explainer_text = $6, created_at = NOW() 
-               WHERE user_id = $1 RETURNING *`,
-        values: [userId, finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText],
-      };
-      const res = await pool.query(updateQuery);
-      return res.rows[0];
-    } else {
-      const insertQuery = {
-        text: `INSERT INTO assessment_results (user_id, final_risk_score, physical_health_score, lifestyle_score, mental_score, ai_explainer_text) 
-               VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        values: [userId, finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText],
-      };
-      const res = await pool.query(insertQuery);
-      return res.rows[0];
-    }
-  }
-
   async replaceFamilyDiseases(userId, diseaseNames) {
     const client = await pool.connect();
     try {
@@ -133,7 +115,6 @@ class UserRepository {
     return result.rows.map((row) => row.name);
   }
 
-  // Mengambil data gabungan lengkap untuk halaman Profile
   async getCompleteUserProfile(userId) {
     const userQuery = {
       text: 'SELECT id, fullname, username FROM users WHERE id = $1',

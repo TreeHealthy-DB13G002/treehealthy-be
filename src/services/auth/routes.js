@@ -1,5 +1,5 @@
 import express from 'express';
-import UserController from '../users/controller.js';
+import AuthController from './controller.js'; // Mengarah ke controller lokal baru
 
 const router = express.Router();
 
@@ -7,14 +7,14 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Auth
- *   description: API untuk Pendaftaran Akun dan Otentikasi Pengguna
+ *   description: Manajemen Pendaftaran Akun dan Hak Akses Pengguna
  */
 
 /**
  * @swagger
  * /auth/register:
  *   post:
- *     summary: Registrasi Akun Pengguna Baru
+ *     summary: Pendaftaran User Baru
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -26,7 +26,7 @@ const router = express.Router();
  *               - fullname
  *               - username
  *               - password
- *               - confirm_password
+ *               - confirmPassword
  *             properties:
  *               fullname:
  *                 type: string
@@ -37,39 +37,22 @@ const router = express.Router();
  *               password:
  *                 type: string
  *                 example: secretpassword
- *               confirm_password:
+ *               confirmPassword:
  *                 type: string
  *                 example: secretpassword
  *     responses:
  *       201:
- *         description: Registrasi berhasil
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 message:
- *                   type: string
- *                   example: Registrasi berhasil.
- *                 data:
- *                   type: object
- *                   properties:
- *                     userId:
- *                       type: integer
- *                       example: 1
+ *         description: Registrasi sukses
  *       400:
- *         description: Validasi gagal atau username telah digunakan
+ *         description: Validasi gagal
  */
-router.post('/register', UserController.register);
+router.post('/register', AuthController.register);
 
 /**
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Autentikasi Pengguna (Login)
+ *     summary: Mendapatkan JWT Token dan flag status pengisian profil
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -89,7 +72,7 @@ router.post('/register', UserController.register);
  *                 example: secretpassword
  *     responses:
  *       200:
- *         description: Login berhasil, mengembalikan Token JWT
+ *         description: Login sukses, mengembalikan token JWT dan flag status profil
  *         content:
  *           application/json:
  *             schema:
@@ -98,18 +81,15 @@ router.post('/register', UserController.register);
  *                 status:
  *                   type: string
  *                   example: success
- *                 message:
- *                   type: string
- *                   example: Login berhasil.
  *                 data:
  *                   type: object
  *                   properties:
  *                     token:
  *                       type: string
- *                       example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *       401:
- *         description: Kredensial tidak valid
+ *                     hasProfile:
+ *                       type: boolean
+ *                       example: false
  */
-router.post('/login', UserController.login);
+router.post('/login', AuthController.login);
 
 export default router;
