@@ -1,5 +1,5 @@
 import express from 'express';
-import AuthController from './controller.js'; // Mengarah ke controller lokal baru
+import AuthController from './controller.js';
 
 const router = express.Router();
 
@@ -26,7 +26,7 @@ const router = express.Router();
  *               - fullname
  *               - username
  *               - password
- *               - confirmPassword
+ *               - confirm_password
  *             properties:
  *               fullname:
  *                 type: string
@@ -37,7 +37,7 @@ const router = express.Router();
  *               password:
  *                 type: string
  *                 example: secretpassword
- *               confirmPassword:
+ *               confirm_password:
  *                 type: string
  *                 example: secretpassword
  *     responses:
@@ -73,22 +73,6 @@ router.post('/register', AuthController.register);
  *     responses:
  *       200:
  *         description: Login sukses, mengembalikan token JWT dan flag status profil
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: object
- *                   properties:
- *                     token:
- *                       type: string
- *                     hasProfile:
- *                       type: boolean
- *                       example: false
  */
 router.post('/login', AuthController.login);
 

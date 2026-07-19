@@ -1,9 +1,9 @@
-import UserRepository from '../auth/repositories.js'; // Koreksi jalur impor ke modul auth
+import UserRepository from '../auth/repositories.js';
 import AssessmentRepository from '../assessment/repositories.js';
 import { settingsUpdateSchema } from './validator.js';
 import InvariantError from '../../exceptions/InvariantError.js';
 import NotFoundError from '../../exceptions/NotFoundError.js';
-import { evaluateHealthRisk } from '../assessment/healthCalculator.js'; // Koreksi jalur impor ke modul assessment
+import { evaluateHealthRisk } from '../assessment/healthCalculator.js';
 
 class SettingsController {
   async getProfile(req, res, next) {
@@ -28,8 +28,8 @@ class SettingsController {
           gender: fullProfile.profile?.gender === 'male' ? 1 : 0,
           height: fullProfile.profile?.height || null,
           weight: fullProfile.profile?.weight || null,
-          activityLevel: fullProfile.profile?.activities || null,
-          familyHistory: mappedFamily,
+          activity_level: fullProfile.profile?.activities || null, // snake_case
+          family_history: mappedFamily, // snake_case
         },
       });
     } catch (error) {
@@ -43,20 +43,20 @@ class SettingsController {
       const { error, value } = settingsUpdateSchema.validate(req.body);
       if (error) throw new InvariantError(error.details[0].message);
 
-      const { fullname, username, age, height, weight, gender, activityLevel, familyHistory } = value;
+      // Desctructure parameter snake_case
+      const { fullname, username, age, height, weight, gender, activity_level, family_history } = value;
       const genderString = gender === 1 ? 'male' : 'female';
 
       await UserRepository.updateBasicUserInfo(userId, fullname, username);
-
       await UserRepository.createOrUpdateProfile(userId, {
-        activities: activityLevel,
+        activities: activity_level,
         age,
         genderString,
         height,
         weight,
       });
 
-      const mappedDiseases = familyHistory.map(d => {
+      const mappedDiseases = family_history.map(d => {
         if (d === 'hypertension') return 'hipertensi';
         if (d === 'heart_disease') return 'jantung/kronis';
         return d;
@@ -67,11 +67,11 @@ class SettingsController {
         weight,
         height,
         age,
-        activities: activityLevel,
+        activities: activity_level,
         familyDiseases: mappedDiseases,
       });
 
-      const aiExplainerText = `Pembalikan Berhasil. Tingkat risiko fisik & metabolik Anda saat ini adalah ${healthAnalysis.physicalHealthScore}%. Kepatuhan gaya hidup sehat: ${healthAnalysis.lifestyleScore}%. Kesejahteraan mental: ${healthAnalysis.mentalScore}%.`;
+      const aiExplainerText = `Pembalasan Berhasil. Tingkat risiko fisik & metabolik Anda saat ini adalah ${healthAnalysis.physicalHealthScore}%. Kepatuhan gaya hidup sehat: ${healthAnalysis.lifestyleScore}%. Kesejahteraan mental: ${healthAnalysis.mentalScore}%.`;
 
       await AssessmentRepository.saveAssessmentResult(userId, {
         finalRiskScore: healthAnalysis.finalRiskScore,
@@ -92,7 +92,7 @@ class SettingsController {
             height,
             weight,
             gender,
-            activityLevel,
+            activity_level,
           },
           health_analysis: {
             bmi: healthAnalysis.bmi,
