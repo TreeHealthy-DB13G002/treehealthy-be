@@ -95,6 +95,20 @@ router.post('/profile', authMiddleware, AssessmentController.saveProfile);
  *                   type: array
  *                   items:
  *                     type: object
+ *             example:
+ *               status: "success"
+ *               data: [
+ *                 {
+ *                   "id": 1,
+ *                   "question_text": "Apakah Anda pernah dinyatakan memiliki riwayat tekanan darah tinggi (Hipertensi) oleh dokter atau tenaga medis?",
+ *                   "category": "tensi",
+ *                   "options": [
+ *                     { "id": 1, "option_text": "Tidak, tekanan darah saya selalu normal setiap kali diperiksa", "score_weight": 0 },
+ *                     { "id": 2, "option_text": "Pernah, tetapi hanya saat masa kehamilan saja", "score_weight": 0 },
+ *                     { "id": 3, "option_text": "Ya, saya memiliki riwayat tekanan darah tinggi berdasarkan diagnosis medis", "score_weight": 1 }
+ *                   ]
+ *                 }
+ *               ]
  */
 router.get('/questions', authMiddleware, AssessmentController.getQuestions);
 

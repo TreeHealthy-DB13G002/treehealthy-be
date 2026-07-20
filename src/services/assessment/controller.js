@@ -2,6 +2,7 @@ import Joi from "joi";
 import AssessmentRepository from "./repositories.js";
 import UserRepository from "../auth/repositories.js";
 import InvariantError from "../../exceptions/InvariantError.js";
+import pool from '../../config/database.js';
 import {
   calculateBMI,
   getBMIMedicalStatus,
@@ -64,7 +65,22 @@ class AssessmentController {
 
   async getQuestions(req, res, next) {
     try {
+      // === SKRIP DIAGNOSTIK MULAI ===
+      const dbInfo = await pool.query('SELECT CURRENT_USER, CURRENT_DATABASE(), VERSION()');
+      console.log(`\n[Diagnostic] Node.js terhubung sebagai User: "${dbInfo.rows[0].current_user}" pada Database: "${dbInfo.rows[0].current_database}"`);
+      
+      const qCount = await pool.query('SELECT COUNT(*) FROM assessment_questions');
+      console.log(`[Diagnostic] Jumlah baris ditemukan di tabel assessment_questions: ${qCount.rows[0].count}`);
+      
+      const oCount = await pool.query('SELECT COUNT(*) FROM assessment_options');
+      console.log(`[Diagnostic] Jumlah baris ditemukan di tabel assessment_options: ${oCount.rows[0].count}\n`);
+      // === SKRIP DIAGNOSTIK SELESAI ===
+
       const questions = await AssessmentRepository.getQuestions();
+      
+      // Tambahkan baris log ini untuk melihat jumlah data yang berhasil ditarik Node.js
+      console.log(`[Database Log] Jumlah pertanyaan yang berhasil ditarik: ${questions.length} baris.`);
+
       return res.status(200).json({
         status: "success",
         data: questions,

@@ -13,4 +13,7 @@ const pool = new Pool({
   port: process.env.PGPORT,
 });
 
+// Skrip Diagnostik untuk mencetak nama DB aktif di terminal VS Code
+console.log(`[Database Connection] Berhasil terhubung ke database: "${pool.options.database}"`);
+
 export default pool;
