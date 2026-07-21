@@ -1,6 +1,6 @@
-import express from "express";
-import JourneyController from "./controller.js";
-import authMiddleware from "../../middlewares/authMiddleware.js";
+import express from 'express';
+import JourneyController from './controller.js';
+import authMiddleware from '../../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -27,7 +27,7 @@ const router = express.Router();
  *             schema:
  *               type: object
  */
-router.get("/summary", authMiddleware, JourneyController.getSummary);
+router.get('/summary', authMiddleware, JourneyController.getSummary);
 
 /**
  * @swagger
@@ -43,7 +43,7 @@ router.get("/summary", authMiddleware, JourneyController.getSummary);
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID unik dari evaluasi mingguan (weekly_evaluations)
+ *         description: Masukkan angka ID evaluasi mingguan (contohnya angka 1)
  *         example: 1
  *     responses:
  *       200:
@@ -53,7 +53,7 @@ router.get("/summary", authMiddleware, JourneyController.getSummary);
  *             schema:
  *               type: object
  */
-router.get("/detail/:cycleId", authMiddleware, JourneyController.getDetail);
+router.get('/detail/:cycleId', authMiddleware, JourneyController.getDetail);
 
 /**
  * @swagger
@@ -76,13 +76,16 @@ router.get("/detail/:cycleId", authMiddleware, JourneyController.getDetail);
  *             properties:
  *               cycle_id:
  *                 type: integer
+ *                 description: ID siklus evaluasi mingguan yang pending
  *                 example: 1
  *               satisfaction_rating:
  *                 type: integer
+ *                 description: Rating kepuasan fisik (Skala 1 - 5)
  *                 example: 5
  *               notes:
  *                 type: string
- *                 example: Mengisi evaluasi yang tertinggal minggu lalu.
+ *                 description: Catatan evaluasi susulan
+ *                 example: Mengisi kuesioner evaluasi minggu lalu yang terlewat.
  *     responses:
  *       200:
  *         description: Evaluasi susulan berhasil disimpan
@@ -91,6 +94,6 @@ router.get("/detail/:cycleId", authMiddleware, JourneyController.getDetail);
  *             schema:
  *               type: object
  */
-router.post("/evaluate-late", authMiddleware, JourneyController.evaluateLate);
+router.post('/evaluate-late', authMiddleware, JourneyController.evaluateLate);
 
 export default router;

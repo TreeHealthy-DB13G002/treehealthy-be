@@ -13,31 +13,6 @@ const router = express.Router();
 
 /**
  * @swagger
- * /dashboard/generate-plan:
- *   post:
- *     summary: Mengaktifkan siklus rencana sehat harian pengguna (Pilar CERDIK)
- *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       201:
- *         description: Program berhasil diaktifkan
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 message:
- *                   type: string
- *                   example: Program rencana aksi sehat selama 7 hari berhasil diaktifkan.
- */
-router.post('/generate-plan', authMiddleware, DashboardController.generatePlan);
-
-/**
- * @swagger
  * /dashboard/current:
  *   get:
  *     summary: Mendapatkan informasi data checklist, ptmRiskScore, streak harian, dan kesehatan pohon digital
@@ -51,12 +26,6 @@ router.post('/generate-plan', authMiddleware, DashboardController.generatePlan);
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: object
  */
 router.get('/current', authMiddleware, DashboardController.getCurrentDashboard);
 
@@ -74,7 +43,7 @@ router.get('/current', authMiddleware, DashboardController.getCurrentDashboard);
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID unik dari tracker tugas harian (user_task_trackers)
+ *         description: Masukkan angka ID tugas harian dari rute GET /current (contohnya angka 1)
  *         example: 1
  *     responses:
  *       200:
@@ -83,12 +52,6 @@ router.get('/current', authMiddleware, DashboardController.getCurrentDashboard);
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 data:
- *                   type: object
  */
 router.patch('/tasks/:taskId/toggle', authMiddleware, DashboardController.toggleTask);
 
@@ -113,16 +76,19 @@ router.patch('/tasks/:taskId/toggle', authMiddleware, DashboardController.toggle
  *             properties:
  *               satisfaction_rating:
  *                 type: integer
+ *                 description: Rating kepuasan fisik (Skala 1 - 5)
  *                 example: 4
  *               notes:
  *                 type: string
- *                 example: Minggu pertama berjalan dengan sangat baik.
+ *                 description: Refleksi catatan kesehatan mingguan
+ *                 example: Minggu pertama berjalan dengan sangat baik dan stamina membaik.
  *               current_week:
  *                 type: integer
+ *                 description: Angka minggu siklus yang diselesaikan (1 - 4)
  *                 example: 1
  *     responses:
  *       200:
- *         description: Siklus berhasil diselesaikan
+ *         description: Siklus mingguan berhasil diselesaikan
  *         content:
  *           application/json:
  *             schema:

@@ -1,37 +1,7 @@
 import DashboardRepository from './repositories.js';
-import InvariantError from '../../exceptions/InvariantError.js';
 import NotFoundError from '../../exceptions/NotFoundError.js';
 
 class DashboardController {
-  async generatePlan(req, res, next) {
-    try {
-      const userId = req.user.id;
-
-      const latestAssessment = await DashboardRepository.getLatestAssessmentResult(userId);
-      if (!latestAssessment) {
-        throw new InvariantError('Anda harus menyelesaikan kuesioner assessment kesehatan terlebih dahulu.');
-      }
-
-      let activeProgram = await DashboardRepository.getActiveProgram(userId);
-      if (!activeProgram) {
-        activeProgram = await DashboardRepository.createDefaultProgram(userId, latestAssessment.id);
-        await DashboardRepository.upsertTreeStatus(userId, 'healthy');
-      }
-
-      return res.status(201).json({
-        status: 'success',
-        message: 'Program rencana aksi sehat selama 7 hari berhasil diaktifkan.',
-        data: {
-          programId: activeProgram.id,
-          currentWeek: activeProgram.current_week,
-          currentDay: activeProgram.current_day,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
   async getCurrentDashboard(req, res, next) {
     try {
       const userId = req.user.id;
@@ -121,7 +91,6 @@ class DashboardController {
   async completeCycle(req, res, next) {
     try {
       const userId = req.user.id;
-      // Membaca input snake_case
       const { satisfaction_rating, notes, current_week } = req.body; 
 
       const program = await DashboardRepository.getActiveProgram(userId);
@@ -146,7 +115,6 @@ class DashboardController {
           status: 'active',
         });
         
-        // Memanggil fungsi repositori baru, bukan pool secara langsung
         await DashboardRepository.incrementProgramWeek(userId, program.id);
 
         return res.status(200).json({
