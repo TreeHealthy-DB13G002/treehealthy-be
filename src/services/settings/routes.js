@@ -34,6 +34,7 @@ const router = express.Router();
  *                     weight: { type: number, example: 71 }
  *                     activity_level: { type: string, example: "freelance" }
  *                     family_history: { type: array, items: { type: string }, example: ["hypertension"] }
+ *                     last_update: { type: string, example: "2026-07-21T11:41:55.746Z" }
  *   put:
  *     summary: Menyimpan perubahan data akun dan data fisik terbaru dari user
  *     tags: [Settings]
@@ -62,15 +63,6 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                   example: success
- *                 message:
- *                   type: string
- *                   example: Perubahan data profil berhasil disimpan.
- *                 data:
- *                   type: object
  */
 router.get('/profile', authMiddleware, SettingsController.getProfile);
 router.put('/profile', authMiddleware, SettingsController.updateProfile);

@@ -28,8 +28,10 @@ class SettingsController {
           gender: fullProfile.profile?.gender === 'male' ? 1 : 0,
           height: fullProfile.profile?.height || null,
           weight: fullProfile.profile?.weight || null,
-          activity_level: fullProfile.profile?.activities || null, // snake_case
-          family_history: mappedFamily, // snake_case
+          activity_level: fullProfile.profile?.activities || null,
+          family_history: mappedFamily,
+          // Mengembalikan timestamp tanggal terakhir kali di-update
+          last_update: fullProfile.profile?.last_update || null, 
         },
       });
     } catch (error) {
@@ -43,12 +45,11 @@ class SettingsController {
       const { error, value } = settingsUpdateSchema.validate(req.body);
       if (error) throw new InvariantError(error.details[0].message);
 
-      // Desctructure parameter snake_case
       const { fullname, username, age, height, weight, gender, activity_level, family_history } = value;
       const genderString = gender === 1 ? 'male' : 'female';
 
       await UserRepository.updateBasicUserInfo(userId, fullname, username);
-      await UserRepository.createOrUpdateProfile(userId, {
+      const updatedProfile = await UserRepository.createOrUpdateProfile(userId, {
         activities: activity_level,
         age,
         genderString,
@@ -71,7 +72,7 @@ class SettingsController {
         familyDiseases: mappedDiseases,
       });
 
-      const aiExplainerText = `Pembalasan Berhasil. Tingkat risiko fisik & metabolik Anda saat ini adalah ${healthAnalysis.physicalHealthScore}%. Kepatuhan gaya hidup sehat: ${healthAnalysis.lifestyleScore}%. Kesejahteraan mental: ${healthAnalysis.mentalScore}%.`;
+      const aiExplainerText = `Pembalikan Berhasil. Tingkat risiko fisik & metabolik Anda saat ini adalah ${healthAnalysis.physicalHealthScore}%. Kepatuhan gaya hidup sehat: ${healthAnalysis.lifestyleScore}%. Kesejahteraan mental: ${healthAnalysis.mentalScore}%.`;
 
       await AssessmentRepository.saveAssessmentResult(userId, {
         finalRiskScore: healthAnalysis.finalRiskScore,
@@ -93,6 +94,7 @@ class SettingsController {
             weight,
             gender,
             activity_level,
+            last_update: updatedProfile.last_update, // Mengembalikan info update terbaru setelah diedit
           },
           health_analysis: {
             bmi: healthAnalysis.bmi,

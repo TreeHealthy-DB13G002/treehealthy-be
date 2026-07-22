@@ -54,37 +54,6 @@ class JourneyController {
       next(error);
     }
   }
-
-  async evaluateLate(req, res, next) {
-    try {
-      const userId = req.user.id;
-      // Perbaikan: Destrukturisasi menggunakan penamaan snake_case sesuai request body Postman
-      const { cycle_id, satisfaction_rating, notes } = req.body;
-
-      const aiInsight = `Evaluasi susulan tersimpan. Untuk rating kepuasan fisik Anda (${satisfaction_rating}/5), disarankan untuk meningkatkan asupan nutrisi buah harian guna mendukung stamina tubuh.`;
-
-      const updatedEval = await JourneyRepository.updateLateEvaluation(userId, cycle_id, {
-        reflection: notes,
-        satisfactionRating: satisfaction_rating,
-        insight: aiInsight,
-      });
-
-      if (!updatedEval) {
-        throw new NotFoundError('Evaluasi mingguan tidak ditemukan.');
-      }
-
-      return res.status(200).json({
-        status: 'success',
-        message: 'Evaluasi susulan berhasil disimpan.',
-        data: {
-          cycleId: updatedEval.id,
-          aiInsight: updatedEval.ai_weekly_insight,
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 }
 
 export default new JourneyController();
