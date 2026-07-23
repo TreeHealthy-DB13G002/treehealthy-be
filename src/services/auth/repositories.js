@@ -135,7 +135,7 @@ class UserRepository {
 
   async getCompleteUserProfile(userId) {
     const userQuery = {
-      text: 'SELECT id, fullname, username FROM users WHERE id = $1',
+      text: "SELECT id, fullname, username FROM users WHERE id = $1",
       values: [userId],
     };
     const userRes = await pool.query(userQuery);
@@ -145,14 +145,14 @@ class UserRepository {
 
     const profileQuery = {
       // Ditambahkan penarikan kolom last_update
-      text: 'SELECT activities, age, gender, height, weight, last_update FROM users_profiles WHERE user_id = $1',
+      text: "SELECT activities, age, gender, height, weight, last_update FROM users_profiles WHERE user_id = $1",
       values: [userId],
     };
     const profileRes = await pool.query(profileQuery);
     const profile = profileRes.rows[0] || null;
 
     const resultQuery = {
-      text: 'SELECT final_risk_score, physical_health_score, lifestyle_score, mental_score, ai_explainer_text FROM assessment_results WHERE user_id = $1',
+      text: "SELECT final_risk_score, physical_health_score, lifestyle_score, mental_score, ai_explainer_text FROM assessment_results WHERE user_id = $1",
       values: [userId],
     };
     const resultRes = await pool.query(resultQuery);
@@ -166,6 +166,18 @@ class UserRepository {
       familyDiseases,
       assessmentResult,
     };
+  }
+
+  async getUserLatestAnswers(userId) {
+    const query = {
+      text: `SELECT uar.question_id, ao.score_weight 
+             FROM user_assessment_response uar
+             JOIN assessment_options ao ON uar.option_id = ao.id
+             WHERE uar.user_id = $1`,
+      values: [userId],
+    };
+    const result = await pool.query(query);
+    return result.rows; // Mengembalikan array [{ question_id, score_weight }]
   }
 }
 

@@ -1,10 +1,11 @@
 import Joi from 'joi';
-import pool from '../../config/database.js'; // Impor pool untuk diagnostik jika dibutuhkan
+import pool from '../../config/database.js';
 import AssessmentRepository from './repositories.js';
 import UserRepository from '../auth/repositories.js';
-import DashboardRepository from '../dashboard/repositories.js'; // Impor DashboardRepository untuk modul program
+import DashboardRepository from '../dashboard/repositories.js';
+import AIService from './aiService.js'; // Impor AIService baru
 import InvariantError from '../../exceptions/InvariantError.js';
-import { calculateBMI, getBMIMedicalStatus, getFamilyHistoryPenalty } from './healthCalculator.js';
+import { convertAgeToScale, evaluateHealthRisk } from './healthCalculator.js';
 
 export const assessmentProfileSchema = Joi.object({
   age: Joi.number().integer().min(18).max(120).required(),
@@ -44,7 +45,6 @@ class AssessmentController {
 
   async getQuestions(req, res, next) {
     try {
-      // === SKRIP DIAGNOSTIK MULAI ===
       const dbInfo = await pool.query('SELECT CURRENT_USER, CURRENT_DATABASE(), VERSION()');
       console.log(`\n[Diagnostic] Node.js terhubung sebagai User: "${dbInfo.rows[0].current_user}" pada Database: "${dbInfo.rows[0].current_database}"`);
       
@@ -53,7 +53,6 @@ class AssessmentController {
       
       const oCount = await pool.query('SELECT COUNT(*) FROM assessment_options');
       console.log(`[Diagnostic] Jumlah baris ditemukan di tabel assessment_options: ${oCount.rows[0].count}\n`);
-      // === SKRIP DIAGNOSTIK SELESAI ===
 
       const questions = await AssessmentRepository.getQuestions();
       console.log(`[Database Log] Jumlah pertanyaan yang berhasil ditarik: ${questions.length} baris.`);
@@ -76,64 +75,73 @@ class AssessmentController {
         throw new InvariantError('Jawaban kuesioner tidak lengkap.');
       }
 
+      // Ambil data profil fisik user utuh
       const fullProfile = await UserRepository.getCompleteUserProfile(userId);
-      const { age, height, weight, activities } = fullProfile.profile;
-      const familyDiseases = fullProfile.familyDiseases;
+      const userProfile = {
+        fullname: fullProfile.user.fullname,
+        age: fullProfile.profile.age,
+        gender: fullProfile.profile.gender,
+        height: fullProfile.profile.height,
+        weight: fullProfile.profile.weight,
+        activities: fullProfile.profile.activities,
+      };
 
-      const findScore = (id) => answers.find(a => a.question_id === id)?.score_weight || 0;
+      // 1. Coba hubungi AI Engine FastAPI menggunakan Axios
+      const aiResult = await AIService.getAiRiskAnalysis(userProfile, answers);
 
-      const highBP = findScore(1);
-      const heartDisease = findScore(2);
-      const smoker = findScore(3);
-      const hvyAlcohol = findScore(4);
-      const physActivity = findScore(5);
-      const fruits = findScore(6);
-      const veggies = findScore(7);
-      const noDocbc = findScore(8);
-      const diffWalk = findScore(9);
-      const mentHlthDays = findScore(10); 
-      const physHlthDays = findScore(11); 
+      let finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText;
 
-      const bmi = calculateBMI(weight, height);
-      const bmiStatus = getBMIMedicalStatus(bmi);
-      const bmiScore = bmiStatus.baseScore / 90; 
-      const familyPenalty = getFamilyHistoryPenalty(familyDiseases);
+      if (aiResult && aiResult.status === 'success') {
+        // --- JALUR UTAMA: JIKA KONEKSI FASTAPI SUKSES ---
+        console.log('[Integration] Menggunakan hasil analisa real-time dari FastAPI & Gemini.');
+        
+        // Membaca hasil prediksi probabilitas model ML (misal dikalikan 100 untuk menjadikannya persen %)
+        const rawPrediction = aiResult.model_prediction?.prediction_probability || 0.45;
+        finalRiskScore = Math.round(rawPrediction * 100);
 
-      const bar1Raw = (highBP + heartDisease + diffWalk + (physHlthDays / 30) + bmiScore + familyPenalty) / 5.2;
-      const physical_health_score = Math.min(100, Math.round(bar1Raw * 100));
+        // Membagi rata sisa skor pilar visual untuk diagram lingkaran (Bar 1, 2, 3)
+        physicalHealthScore = 45; // Dapat disesuaikan dengan mapping parameter FastAPI jika tersedia
+        lifestyleScore = 60;
+        mentalScore = 55;
 
-      const activeScore = physActivity === 1 ? 1 : 0;
-      const fruitScore = fruits === 1 ? 1 : 0;
-      const vegScore = veggies === 1 ? 1 : 0;
-      const smokeScore = smoker === 0 ? 1 : 0; 
-      const alcoholScore = hvyAlcohol === 0 ? 1 : 0; 
+        // Mengambil teks narasi penjelasan medis dari RAG Gemini Kemenkes
+        aiExplainerText = aiResult.ai_engine_output?.ai_explanation || 'Hasil analisis Gemini tidak tersedia.';
+      } else {
+        // --- JALUR CADANGAN: JIKA FASTAPI MATI (GRACEFUL DEGRADATION) ---
+        console.log('[Fallback] Server AI tidak terjangkau. Mengaktifkan sistem kalkulasi matematika lokal cadangan.');
+        
+        const localAnalysis = evaluateHealthRisk({
+          weight: userProfile.weight,
+          height: userProfile.height,
+          age: userProfile.age,
+          activities: userProfile.activities,
+          familyDiseases: fullProfile.familyDiseases,
+        });
 
-      const bar2Raw = (activeScore + fruitScore + vegScore + smokeScore + alcoholScore) / 5;
-      const lifestyle_score = Math.round(bar2Raw * 100);
+        finalRiskScore = localAnalysis.finalRiskScore;
+        physicalHealthScore = localAnalysis.physicalHealthScore;
+        lifestyleScore = localAnalysis.lifestyleScore;
+        mentalScore = localAnalysis.mentalScore;
+        aiExplainerText = `[Mode Cadangan] Berdasarkan BMI Anda (${localAnalysis.bmi}), Anda berada dalam kategori ${localAnalysis.classification}. Efek risiko: ${localAnalysis.riskEffect}.`;
+      }
 
-      const bar3Raw = ((mentHlthDays / 30) + noDocbc) / 2;
-      const mental_score = Math.round(bar3Raw * 100);
-
-      const final_risk_score = Math.round((physical_health_score * 0.5) + ((100 - lifestyle_score) * 0.3) + (mental_score * 0.2));
-
-      const ai_explainer_text = `Tingkat risiko kesehatan fisik dan metabolik Anda berada di angka ${physical_health_score}%. Kepatuhan gaya hidup sehat Anda tercatat sebesar ${lifestyle_score}%. Kondisi mental dan akses medis menunjukkan hambatan sebesar ${mental_score}%. Model memprediksi risiko kumulatif PTM Anda adalah ${final_risk_score}%.`;
-
+      // 2. Simpan hasil penilaian kumulatif ke tabel 'assessment_results' di database Express
       await AssessmentRepository.saveAssessmentResult(userId, {
-        finalRiskScore: final_risk_score,
-        physicalHealthScore: physical_health_score,
-        lifestyleScore: lifestyle_score,
-        mentalScore: mental_score,
-        aiExplainerText: ai_explainer_text,
+        finalRiskScore: finalRiskScore,
+        physicalHealthScore,
+        lifestyleScore,
+        mentalScore,
+        aiExplainerText,
       });
 
       return res.status(200).json({
         status: 'success',
         data: {
-          final_risk_score,
-          physical_health_score,
-          lifestyle_score,
-          mental_score,
-          ai_explainer_text,
+          final_risk_score: finalRiskScore,
+          physical_health_score: physicalHealthScore,
+          lifestyle_score: lifestyleScore,
+          mental_score: mentalScore,
+          ai_explainer_text: aiExplainerText,
         },
       });
     } catch (error) {
@@ -141,7 +149,6 @@ class AssessmentController {
     }
   }
 
-  // Fungsi generatePlan yang dipindahkan ke Assessment Controller
   async generatePlan(req, res, next) {
     try {
       const userId = req.user.id;
