@@ -6,14 +6,35 @@ class DashboardController {
     try {
       const userId = req.user.id;
 
-      const program = await DashboardRepository.getActiveProgram(userId);
+      let program = await DashboardRepository.getActiveProgram(userId);
       if (!program) {
         throw new NotFoundError('Anda belum memiliki program sehat yang aktif.');
+      }
+
+      // =========================================================================
+      // LOGIKA PEMICU DETEKSI GANTI HARI OTOMATIS (DINAMIS BERDASARKAN REAL DATE)
+      // =========================================================================
+      const startDate = new Date(program.start_date);
+      const today = new Date();
+      
+      // Hitung selisih hari kalender nyata dari tanggal start
+      const diffTime = Math.abs(today - startDate);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // Menghasilkan Day 1, 2, dst.
+
+      // Jika hari kalender nyata bertambah dan masih dalam siklus 7 hari, majukan Day secara otomatis
+      if (diffDays > program.current_day && diffDays <= 7) {
+        console.log(`[Dashboard - Auto Advance] Ganti hari terdeteksi secara otomatis dari Day ${program.current_day} ke Day ${diffDays}.`);
+        program = await DashboardRepository.updateProgramProgress(userId, program.id, {
+          currentDay: diffDays,
+          streakDays: program.streak_days, // Streak dipertahankan sesuai kepatuhan tugas sebelumnya
+          status: 'active',
+        });
       }
 
       const assessment = await DashboardRepository.getLatestAssessmentResult(userId);
       const tree = await DashboardRepository.getTreeStatus(userId);
 
+      // Ambil atau buat tugas harian baru untuk Day aktif terbaru
       const dailyChecklist = await DashboardRepository.getOrCreateTaskTrackers(
         userId,
         program.current_week,

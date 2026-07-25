@@ -3,7 +3,7 @@ import pool from '../../config/database.js';
 import AssessmentRepository from './repositories.js';
 import UserRepository from '../auth/repositories.js';
 import DashboardRepository from '../dashboard/repositories.js';
-import AIService from './aiService.js'; // Impor AIService baru
+import AIService from './aiService.js'; 
 import InvariantError from '../../exceptions/InvariantError.js';
 import { convertAgeToScale, evaluateHealthRisk } from './healthCalculator.js';
 
@@ -75,7 +75,6 @@ class AssessmentController {
         throw new InvariantError('Jawaban kuesioner tidak lengkap.');
       }
 
-      // Ambil data profil fisik user utuh
       const fullProfile = await UserRepository.getCompleteUserProfile(userId);
       const userProfile = {
         fullname: fullProfile.user.fullname,
@@ -86,48 +85,42 @@ class AssessmentController {
         activities: fullProfile.profile.activities,
       };
 
-      // 1. Coba hubungi AI Engine FastAPI menggunakan Axios
+      // Jalankan kuesioner lokal cadangan terlebih dahulu untuk menyuplai skor pilar dinamis (Guna menghindari skor hardcode)
+      const localAnalysis = evaluateHealthRisk({
+        weight: userProfile.weight,
+        height: userProfile.height,
+        age: userProfile.age,
+        activities: userProfile.activities,
+        familyDiseases: fullProfile.familyDiseases,
+      });
+
+      // Hubungi AI Engine FastAPI
       const aiResult = await AIService.getAiRiskAnalysis(userProfile, answers);
 
       let finalRiskScore, physicalHealthScore, lifestyleScore, mentalScore, aiExplainerText;
 
+      // Suplay 3 skor pilar secara dinamis dari logika kuesioner lokal (tidak lagi hardcode)
+      physicalHealthScore = localAnalysis.physicalHealthScore;
+      lifestyleScore = localAnalysis.lifestyleScore;
+      mentalScore = localAnalysis.mentalScore;
+
       if (aiResult && aiResult.status === 'success') {
-        // --- JALUR UTAMA: JIKA KONEKSI FASTAPI SUKSES ---
         console.log('[Integration] Menggunakan hasil analisa real-time dari FastAPI & Gemini.');
         
-        // Membaca hasil prediksi probabilitas model ML (misal dikalikan 100 untuk menjadikannya persen %)
-        const rawPrediction = aiResult.model_prediction?.prediction_probability || 0.45;
-        finalRiskScore = Math.round(rawPrediction * 100);
+        // Membaca persentase probabilitas dinamis dari model FastAPI (XGBoost)
+        const rawPrediction = aiResult.model_prediction?.probability || 0.1078;
+        finalRiskScore = rawPrediction < 1 ? Math.round(rawPrediction * 100) : Math.round(rawPrediction);
 
-        // Membagi rata sisa skor pilar visual untuk diagram lingkaran (Bar 1, 2, 3)
-        physicalHealthScore = 45; // Dapat disesuaikan dengan mapping parameter FastAPI jika tersedia
-        lifestyleScore = 60;
-        mentalScore = 55;
-
-        // Mengambil teks narasi penjelasan medis dari RAG Gemini Kemenkes
         aiExplainerText = aiResult.ai_engine_output?.ai_explanation || 'Hasil analisis Gemini tidak tersedia.';
       } else {
-        // --- JALUR CADANGAN: JIKA FASTAPI MATI (GRACEFUL DEGRADATION) ---
         console.log('[Fallback] Server AI tidak terjangkau. Mengaktifkan sistem kalkulasi matematika lokal cadangan.');
         
-        const localAnalysis = evaluateHealthRisk({
-          weight: userProfile.weight,
-          height: userProfile.height,
-          age: userProfile.age,
-          activities: userProfile.activities,
-          familyDiseases: fullProfile.familyDiseases,
-        });
-
         finalRiskScore = localAnalysis.finalRiskScore;
-        physicalHealthScore = localAnalysis.physicalHealthScore;
-        lifestyleScore = localAnalysis.lifestyleScore;
-        mentalScore = localAnalysis.mentalScore;
         aiExplainerText = `[Mode Cadangan] Berdasarkan BMI Anda (${localAnalysis.bmi}), Anda berada dalam kategori ${localAnalysis.classification}. Efek risiko: ${localAnalysis.riskEffect}.`;
       }
 
-      // 2. Simpan hasil penilaian kumulatif ke tabel 'assessment_results' di database Express
       await AssessmentRepository.saveAssessmentResult(userId, {
-        finalRiskScore: finalRiskScore,
+        finalRiskScore,
         physicalHealthScore,
         lifestyleScore,
         mentalScore,
