@@ -10,9 +10,13 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api',
-        description: 'Server Lokal (Development)',
+        url: 'https://api.treehealthy-dicoding.online/api',
+        description: 'Server Produksi (Live Cloud)'
       },
+      {
+        url: 'http://localhost:3000/api',
+        description: 'Server Lokal (Development)'
+      }
     ],
     // Mengunci urutan folder dari atas ke bawah agar tersusun rapi di UI
     tags: [
