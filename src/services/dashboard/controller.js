@@ -165,6 +165,60 @@ class DashboardController {
       next(error);
     }
   }
+
+  async getWeeklyStats(req, res, next) {
+    try {
+      const userId = req.user.id;
+
+      // Ambil program sehat aktif saat ini
+      const program = await DashboardRepository.getActiveProgram(userId);
+      if (!program) {
+        throw new NotFoundError('Program sehat aktif tidak ditemukan.');
+      }
+
+      // Ambil seluruh tracker tugas milik user pada minggu aktif saat ini
+      const trackers = await DashboardRepository.getWeeklyTrackers(userId, program.current_week);
+
+      const total_tasks = trackers.length;
+      const done_tasks = trackers.filter(t => t.status === 'completed').length;
+      const avg_compliance = total_tasks > 0 ? Math.round((done_tasks / total_tasks) * 100) : 0;
+
+      // --- LOGIKA KALKULASI PERFECT DAYS (Hari Sempurna 100% Checklist Selesai) ---
+      // Kelompokkan total tugas dan tugas selesai berdasarkan hari (Day 1 s.d Day 7)
+      const daysMap = {};
+      trackers.forEach(t => {
+        const day = t.assigned_day;
+        if (!daysMap[day]) {
+          daysMap[day] = { total: 0, completed: 0 };
+        }
+        daysMap[day].total += 1;
+        if (t.status === 'completed') {
+          daysMap[day].completed += 1;
+        }
+      });
+
+      // Hitung berapa hari yang memiliki total tugas > 0 dan semuanya selesai 100%
+      let perfect_days = 0;
+      Object.values(daysMap).forEach(d => {
+        if (d.total > 0 && d.total === d.completed) {
+          perfect_days += 1;
+        }
+      });
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Berhasil mengambil statistik evaluasi mingguan',
+        data: {
+          avg_compliance,
+          perfect_days,
+          done_tasks,
+          total_tasks
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new DashboardController();

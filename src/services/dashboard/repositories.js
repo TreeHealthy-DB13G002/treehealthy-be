@@ -211,6 +211,18 @@ class DashboardRepository {
     const result = await pool.query(query);
     return result.rows[0];
   }
+
+  async getWeeklyTrackers(userId, weekNumber) {
+    const query = {
+      text: `SELECT utt.status, dap.assigned_day, utt.log_date 
+             FROM user_task_trackers utt
+             JOIN daily_action_plans dap ON utt.action_plan_id = dap.id
+             WHERE utt.user_id = $1 AND dap.assigned_week = $2`,
+      values: [userId, weekNumber],
+    };
+    const result = await pool.query(query);
+    return result.rows; // Mengembalikan seluruh baris tracker tugas minggu ini
+  }
 }
 
 export default new DashboardRepository();

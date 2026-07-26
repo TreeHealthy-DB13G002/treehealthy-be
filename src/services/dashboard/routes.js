@@ -96,4 +96,44 @@ router.patch('/tasks/:taskId/toggle', authMiddleware, DashboardController.toggle
  */
 router.post('/cycle-complete', authMiddleware, DashboardController.completeCycle);
 
+/**
+ * @swagger
+ * /dashboard/weekly-stats:
+ *   get:
+ *     summary: Mendapatkan data statistik evaluasi kepatuhan mingguan pengguna untuk Day 7
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Berhasil mengambil statistik evaluasi mingguan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: Berhasil mengambil statistik evaluasi mingguan
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     avg_compliance:
+ *                       type: integer
+ *                       example: 85
+ *                     perfect_days:
+ *                       type: integer
+ *                       example: 5
+ *                     done_tasks:
+ *                       type: integer
+ *                       example: 24
+ *                     total_tasks:
+ *                       type: integer
+ *                       example: 28
+ */
+router.get('/weekly-stats', authMiddleware, DashboardController.getWeeklyStats);
+
 export default router;
