@@ -112,14 +112,16 @@ class DashboardController {
   async completeCycle(req, res, next) {
     try {
       const userId = req.user.id;
-      const { satisfaction_rating, notes, current_week } = req.body; 
+      // KOREKSI: Hapus satisfaction_rating dari destrukturisasi req.body
+      const { notes, current_week } = req.body; 
 
       const program = await DashboardRepository.getActiveProgram(userId);
       if (!program) {
         throw new NotFoundError('Program sehat aktif tidak ditemukan.');
       }
 
-      const aiWeeklyInsight = `Gaya hidup sehat Anda di minggu ke-${current_week} menunjukkan kepatuhan yang baik. Rating kepuasan fisik Anda berada pada angka ${satisfaction_rating}/5. Tetap pertahankan hidrasi tubuh dan hindari makanan jenuh di siklus berikutnya!`;
+      // KOREKSI: Sesuaikan teks rekomendasi AI tanpa menyertakan rating kepuasan fisik
+      const aiWeeklyInsight = `Gaya hidup sehat Anda di minggu ke-${current_week} menunjukkan kepatuhan yang baik. Tetap pertahankan hidrasi tubuh dan hindari makanan jenuh di siklus berikutnya!`;
 
       await DashboardRepository.saveWeeklyEvaluation(userId, {
         weekNumber: current_week,

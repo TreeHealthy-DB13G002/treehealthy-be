@@ -57,47 +57,6 @@ router.patch('/tasks/:taskId/toggle', authMiddleware, DashboardController.toggle
 
 /**
  * @swagger
- * /dashboard/cycle-complete:
- *   post:
- *     summary: Menyelesaikan evaluasi siklus mingguan dan me-reset dashboard ke minggu berikutnya
- *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - satisfaction_rating
- *               - notes
- *               - current_week
- *             properties:
- *               satisfaction_rating:
- *                 type: integer
- *                 description: Rating kepuasan fisik (Skala 1 - 5)
- *                 example: 4
- *               notes:
- *                 type: string
- *                 description: Refleksi catatan kesehatan mingguan
- *                 example: Minggu pertama berjalan dengan sangat baik dan stamina membaik.
- *               current_week:
- *                 type: integer
- *                 description: Angka minggu siklus yang diselesaikan (1 - 4)
- *                 example: 1
- *     responses:
- *       200:
- *         description: Siklus mingguan berhasil diselesaikan
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- */
-router.post('/cycle-complete', authMiddleware, DashboardController.completeCycle);
-
-/**
- * @swagger
  * /dashboard/weekly-stats:
  *   get:
  *     summary: Mendapatkan data statistik evaluasi kepatuhan mingguan pengguna untuk Day 7
@@ -135,5 +94,41 @@ router.post('/cycle-complete', authMiddleware, DashboardController.completeCycle
  *                       example: 28
  */
 router.get('/weekly-stats', authMiddleware, DashboardController.getWeeklyStats);
+
+/**
+ * @swagger
+ * /dashboard/cycle-complete:
+ *   post:
+ *     summary: Menyelesaikan evaluasi siklus mingguan dan me-reset dashboard ke minggu berikutnya
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notes
+ *               - current_week
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 description: Refleksi catatan kesehatan mingguan
+ *                 example: Minggu pertama berjalan dengan sangat baik dan stamina membaik.
+ *               current_week:
+ *                 type: integer
+ *                 description: Angka minggu siklus yang diselesaikan (1 - 4)
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Siklus mingguan berhasil diselesaikan
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+router.post('/cycle-complete', authMiddleware, DashboardController.completeCycle);
 
 export default router;
