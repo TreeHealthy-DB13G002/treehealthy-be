@@ -109,10 +109,10 @@ class DashboardController {
     }
   }
 
+  // Perbarui fungsi completeCycle di dalam src/services/dashboard/controller.js
   async completeCycle(req, res, next) {
     try {
       const userId = req.user.id;
-      // KOREKSI: Hapus satisfaction_rating dari destrukturisasi req.body
       const { notes, current_week } = req.body; 
 
       const program = await DashboardRepository.getActiveProgram(userId);
@@ -120,7 +120,6 @@ class DashboardController {
         throw new NotFoundError('Program sehat aktif tidak ditemukan.');
       }
 
-      // KOREKSI: Sesuaikan teks rekomendasi AI tanpa menyertakan rating kepuasan fisik
       const aiWeeklyInsight = `Gaya hidup sehat Anda di minggu ke-${current_week} menunjukkan kepatuhan yang baik. Tetap pertahankan hidrasi tubuh dan hindari makanan jenuh di siklus berikutnya!`;
 
       await DashboardRepository.saveWeeklyEvaluation(userId, {
@@ -132,19 +131,16 @@ class DashboardController {
       });
 
       if (current_week < 4) {
-        await DashboardRepository.updateProgramProgress(userId, program.id, {
-          currentDay: 1,
-          streakDays: 0,
-          status: 'active',
-        });
-        
-        await DashboardRepository.incrementProgramWeek(userId, program.id);
+        const nextWeek = current_week + 1;
+
+        // KOREKSI: Menggunakan kueri atomik baru untuk memperbarui minggu & hari sekaligus secara konsisten
+        await DashboardRepository.completeWeeklyCycle(userId, program.id, nextWeek);
 
         return res.status(200).json({
           status: 'success',
           message: 'Siklus mingguan berhasil diselesaikan. Dashboard telah di-reset ke minggu berikutnya.',
           data: {
-            currentWeek: current_week + 1,
+            currentWeek: nextWeek,
             triggerModal: 'next_week',
           },
         });
